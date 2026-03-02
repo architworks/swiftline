@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, BookmarkPlus, ChevronLeft, Type, Minus, Plus, Menu, X, Save, Trash2, RotateCcw, Rabbit, Turtle, Sparkles } from 'lucide-react';
+import { Play, Pause, BookmarkPlus, ChevronLeft, Type, Minus, Plus, X, Save, Trash2, RotateCcw, Rabbit, Turtle, Sparkles, BookOpen } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -215,80 +215,82 @@ export default function RSVPReader({
         <div className="flex flex-col h-full min-h-[80vh] w-full max-w-4xl mx-auto p-4 sm:p-8 relative">
 
             {/* Table of Contents Overlay */}
-            {isTocOpen && (
-                <div className="absolute inset-0 z-50 flex">
-                    {/* The Sidebar */}
-                    <div className="w-full sm:w-80 bg-background border-r h-full shadow-2xl flex flex-col pt-4 pb-8 overflow-y-auto z-50">
-                        <div className="flex justify-between items-center px-6 mb-6">
-                            <h3 className="font-semibold text-lg">Table of Contents</h3>
-                            <button onClick={() => setIsTocOpen(false)} className="p-2 hover:bg-foreground/5 rounded-full"><X className="w-5 h-5" /></button>
-                        </div>
-                        {chapters.length === 0 ? (
-                            <div className="px-6 text-sm text-foreground/50">No chapters found.</div>
-                        ) : (
-                            <ul className="flex flex-col">
-                                {chapters.map((chap, i) => (
-                                    <li key={i}>
-                                        <button
-                                            onClick={() => {
-                                                setCurrentIndex(chap.word_index);
-                                                setIsPlaying(false);
-                                                setIsTocOpen(false);
-                                            }}
-                                            className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5"
-                                        >
-                                            <span className="font-medium text-foreground/90">{chap.title}</span>
-                                            <span className="text-xs text-foreground/50">Word {chap.word_index.toLocaleString()}</span>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+            <div className={`absolute inset-0 z-50 flex transition-all duration-300 ease-in-out ${isTocOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+                {/* The Clickaway Backdrop */}
+                <div
+                    className={`absolute inset-0 bg-background/80 backdrop-blur-sm transition-opacity duration-300 ${isTocOpen ? 'opacity-100' : 'opacity-0'}`}
+                    onClick={() => setIsTocOpen(false)}
+                />
 
-                        {/* Bookmarks Section */}
-                        <div className="flex justify-between items-center px-6 mt-8 mb-4 border-t border-foreground/10 pt-8">
-                            <h3 className="font-semibold text-lg flex items-center gap-2">Bookmarks</h3>
-                        </div>
-                        {bookmarks.length === 0 ? (
-                            <div className="px-6 text-sm text-foreground/50">No bookmarks yet.</div>
-                        ) : (
-                            <ul className="flex flex-col">
-                                {bookmarks.map((bm, i) => (
-                                    <li key={i}>
-                                        <button
-                                            onClick={() => {
-                                                setCurrentIndex(bm.word_index);
-                                                setIsPlaying(false);
-                                                setIsTocOpen(false);
-                                            }}
-                                            className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5 group"
-                                        >
-                                            <div className="flex justify-between items-start w-full gap-2">
-                                                <span className="font-medium text-foreground/90 leading-tight pt-1">{bm.note || `Bookmark #${i + 1}`}</span>
-                                                <div
-                                                    role="button"
-                                                    tabIndex={0}
-                                                    onClick={(e) => handleDeleteBookmark(e, bm.id)}
-                                                    className={`p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all ${isDeletingBookmark === bm.id ? 'opacity-50 pointer-events-none' : ''}`}
-                                                    title="Delete Bookmark"
-                                                >
-                                                    <Trash2 className="w-4 h-4" />
-                                                </div>
-                                            </div>
-                                            <div className="flex justify-between w-full text-xs text-foreground/50 mt-1">
-                                                <span>Word {bm.word_index.toLocaleString()}</span>
-                                                <span className="italic truncate max-w-[120px]">&quot;{words.slice(bm.word_index, bm.word_index + 3).join(' ')}...&quot;</span>
-                                            </div>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
-                        )}
+                {/* The Sidebar panel */}
+                <div className={`relative w-full sm:w-80 bg-background border-r h-full shadow-2xl flex flex-col pt-4 pb-8 overflow-y-auto z-50 transform transition-transform duration-300 ease-out ${isTocOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                    <div className="flex justify-between items-center px-6 mb-6">
+                        <h3 className="font-semibold text-lg flex items-center gap-2"><BookOpen className="w-5 h-5" /> Chapters</h3>
+                        <button onClick={() => setIsTocOpen(false)} className="p-2 hover:bg-foreground/5 rounded-full transition-colors"><X className="w-5 h-5" /></button>
                     </div>
-                    {/* The Clickaway Backdrop */}
-                    <div className="flex-1 bg-black/20 backdrop-blur-sm" onClick={() => setIsTocOpen(false)} />
+                    {chapters.length === 0 ? (
+                        <div className="px-6 text-sm text-foreground/50">No chapters found.</div>
+                    ) : (
+                        <ul className="flex flex-col">
+                            {chapters.map((chap, i) => (
+                                <li key={i}>
+                                    <button
+                                        onClick={() => {
+                                            setCurrentIndex(chap.word_index);
+                                            setIsPlaying(false);
+                                            setIsTocOpen(false);
+                                        }}
+                                        className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5 group"
+                                    >
+                                        <span className="font-medium text-foreground/90 group-hover:text-blue-500 transition-colors">{chap.title}</span>
+                                        <span className="text-xs text-foreground/50">Word {chap.word_index.toLocaleString()}</span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+
+                    {/* Bookmarks Section */}
+                    <div className="flex justify-between items-center px-6 mt-8 mb-4 border-t border-foreground/10 pt-8">
+                        <h3 className="font-semibold text-lg flex items-center gap-2">Bookmarks</h3>
+                    </div>
+                    {bookmarks.length === 0 ? (
+                        <div className="px-6 text-sm text-foreground/50">No bookmarks yet.</div>
+                    ) : (
+                        <ul className="flex flex-col">
+                            {bookmarks.map((bm, i) => (
+                                <li key={i}>
+                                    <button
+                                        onClick={() => {
+                                            setCurrentIndex(bm.word_index);
+                                            setIsPlaying(false);
+                                            setIsTocOpen(false);
+                                        }}
+                                        className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5 group"
+                                    >
+                                        <div className="flex justify-between items-start w-full gap-2">
+                                            <span className="font-medium text-foreground/90 leading-tight pt-1">{bm.note || `Bookmark #${i + 1}`}</span>
+                                            <div
+                                                role="button"
+                                                tabIndex={0}
+                                                onClick={(e) => handleDeleteBookmark(e, bm.id)}
+                                                className={`p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all ${isDeletingBookmark === bm.id ? 'opacity-50 pointer-events-none' : ''}`}
+                                                title="Delete Bookmark"
+                                            >
+                                                <Trash2 className="w-4 h-4" />
+                                            </div>
+                                        </div>
+                                        <div className="flex justify-between w-full text-xs text-foreground/50 mt-1">
+                                            <span>Word {bm.word_index.toLocaleString()}</span>
+                                            <span className="italic truncate max-w-[120px]">&quot;{words.slice(bm.word_index, bm.word_index + 3).join(' ')}...&quot;</span>
+                                        </div>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
                 </div>
-            )}
+            </div>
 
             {/* Bookmark Modal */}
             {isBookmarkModalOpen && (
@@ -336,10 +338,11 @@ export default function RSVPReader({
                     </Link>
                     <button
                         onClick={() => setIsTocOpen(true)}
-                        className="flex items-center gap-2 p-2 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-foreground transition-colors"
-                        title="Table of Contents"
+                        className="flex items-center gap-2 px-3 py-2 rounded-md hover:bg-foreground/5 text-foreground transition-colors group"
+                        title="Chapters"
                     >
-                        <Menu className="w-5 h-5" />
+                        <BookOpen className="w-5 h-5 text-foreground/60 group-hover:text-foreground transition-colors" />
+                        <span className="text-sm font-semibold tracking-wide">Chapters</span>
                     </button>
                 </div>
 

@@ -117,14 +117,14 @@ export default function DocumentUpload({ onUploadSuccess }: { onUploadSuccess: (
         <div className="w-full">
             <div
                 {...getRootProps()}
-                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-colors duration-200 
-          ${isDragActive ? 'border-blue-500 bg-blue-50/10' : 'border-gray-300 hover:border-gray-400 hover:bg-gray-50/5'}
+                className={`border-2 border-dashed rounded-xl p-10 text-center cursor-pointer transition-all duration-300 
+          ${isDragActive ? 'border-orange-500 bg-orange-500/10 scale-[1.02] shadow-lg' : 'border-orange-500/30 hover:border-orange-500/60 hover:bg-orange-500/5'}
           ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}
         `}
             >
                 <input {...getInputProps()} />
                 <div className="flex flex-col items-center justify-center gap-4 text-foreground/70">
-                    <UploadCloud className={`w-12 h-12 ${isDragActive ? 'text-blue-500' : 'text-gray-400'}`} />
+                    <UploadCloud className={`w-12 h-12 transition-colors ${isDragActive ? 'text-orange-500' : 'text-orange-500/60'}`} />
                     {isDragActive ? (
                         <p className="text-lg font-medium">Drop the document here ...</p>
                     ) : (

@@ -44,6 +44,13 @@
   --btn-background-hover: #3f3f46;
 }
 
+.sepia {
+  --background: #fbf0d9;
+  --foreground: #5f4b32;
+  --btn-background: #f2e1c1;
+  --btn-background-hover: #e6cba3;
+}
+
 body {
   color: var(--foreground);
   background: var(--background);

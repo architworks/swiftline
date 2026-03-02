@@ -11,26 +11,7 @@ export default async function LoginPage({
 
     return (
         <div className="flex-1 flex flex-col w-full h-screen items-center justify-center bg-background px-4">
-            <Link
-                href="/"
-                className="absolute left-4 top-4 sm:left-8 sm:top-8 py-2 px-4 rounded-md no-underline text-foreground bg-foreground/5 hover:bg-foreground/10 flex items-center group text-sm font-medium transition-colors"
-            >
-                <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="20"
-                    height="20"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    className="mr-2 h-4 w-4 transition-transform group-hover:-translate-x-1"
-                >
-                    <polyline points="15 18 9 12 15 6" />
-                </svg>{' '}
-                Back
-            </Link>
+
 
             <div className="absolute right-4 top-4 sm:right-8 sm:top-8">
                 <ThemeToggle />
@@ -50,7 +31,7 @@ export default async function LoginPage({
                         <input
                             className="rounded-lg px-4 py-2.5 bg-foreground/5 border border-foreground/10 outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
                             name="email"
-                            placeholder="you@example.com"
+                            placeholder="architmishrapro@gmail.com"
                             required
                         />
                     </div>
