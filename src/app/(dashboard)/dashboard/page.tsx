@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server'
 import { redirect } from 'next/navigation'
+import Link from 'next/link'
 import { logout } from '@/app/actions'
 import DashboardUploader from '@/components/DashboardUploader'
 
@@ -52,7 +53,7 @@ export default async function DashboardPage() {
                                 const progress = doc.reading_progress[0]
                                 const percent = progress?.percent_complete || 0
                                 return (
-                                    <div key={doc.id} className="border p-4 rounded-lg flex flex-col gap-2 hover:border-blue-500 transition-colors cursor-pointer">
+                                    <Link key={doc.id} href={`/reader/${doc.id}`} className="block border p-4 rounded-lg flex flex-col gap-2 hover:border-blue-500 transition-colors cursor-pointer">
                                         <h3 className="font-medium truncate" title={doc.title}>{doc.title}</h3>
                                         <div className="flex justify-between text-xs text-foreground/60">
                                             <span>{doc.total_word_count.toLocaleString()} words</span>
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
                                         <div className="w-full bg-btn-background h-1.5 mt-2 rounded-full overflow-hidden">
                                             <div className="bg-blue-500 h-full" style={{ width: `${percent}%` }}></div>
                                         </div>
-                                    </div>
+                                    </Link>
                                 )
                             })}
                         </div>

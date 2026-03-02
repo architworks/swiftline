@@ -41,7 +41,10 @@ export default function DocumentUpload({ onUploadSuccess }: { onUploadSuccess: (
                 .from('documents')
                 .upload(storagePath, file);
 
-            if (uploadError) throw new Error("Failed to upload file to storage");
+            if (uploadError) {
+                console.error("Storage upload error:", uploadError);
+                throw new Error(uploadError.message || "Failed to upload file to storage");
+            }
 
             setStatus({ type: 'idle', message: 'Saving document metadata...' });
 
