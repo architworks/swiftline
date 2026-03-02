@@ -1,9 +1,5 @@
 'use client';
 
-import * as pdfjsLib from 'pdfjs-dist';
-import mammoth from 'mammoth';
-import ePub from 'epubjs';
-
 export interface Chapter {
     title: string;
     word_index: number;
@@ -14,15 +10,15 @@ export interface ParseResult {
     chapters: Chapter[];
 }
 
-// Setup PDF worker.
-pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
-
 function tokenizeText(text: string): string[] {
     if (!text) return [];
     return text.trim().split(/\s+/).filter(Boolean);
 }
 
 async function parsePDF(file: File): Promise<ParseResult> {
+    const pdfjsLib = await import('pdfjs-dist');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`;
+
     const arrayBuffer = await file.arrayBuffer();
     const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
 
@@ -38,7 +34,9 @@ async function parsePDF(file: File): Promise<ParseResult> {
 
         const page = await pdf.getPage(i);
         const content = await page.getTextContent();
-        const pageText = content.items.map((item: any) => item.str).join(' ');
+        const pageText = content.items.map((item: unknown) =>
+            (item && typeof item === 'object' && 'str' in item) ? (item as { str: string }).str : ''
+        ).join(' ');
 
         const wordsInPage = tokenizeText(pageText);
         currentWordSum += wordsInPage.length;
@@ -49,6 +47,7 @@ async function parsePDF(file: File): Promise<ParseResult> {
 }
 
 async function parseDocx(file: File): Promise<ParseResult> {
+    const mammoth = (await import('mammoth')).default;
     const arrayBuffer = await file.arrayBuffer();
     const result = await mammoth.extractRawText({ arrayBuffer });
     const words = tokenizeText(result.value);
@@ -56,6 +55,7 @@ async function parseDocx(file: File): Promise<ParseResult> {
 }
 
 async function parseEpub(file: File): Promise<ParseResult> {
+    const ePub = (await import('epubjs')).default;
     const arrayBuffer = await file.arrayBuffer();
     const book = ePub(arrayBuffer);
     await book.ready;
@@ -64,13 +64,14 @@ async function parseEpub(file: File): Promise<ParseResult> {
     const chapters: Chapter[] = [];
     let currentWordSum = 0;
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const spineItems: any[] = (book.spine as any).items || [];
     for (let i = 0; i < spineItems.length; i++) {
         const section = book.spine.get(i);
         if (section) {
             try {
                 // Record the chapter start
-                let chapterTitle = section.idref || `Section ${i + 1}`;
+                const chapterTitle = section.idref || `Section ${i + 1}`;
                 chapters.push({ title: chapterTitle, word_index: currentWordSum });
 
                 const item = await section.load(book.load.bind(book));

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, FastForward, Rewind, BookmarkPlus, ChevronLeft, Type, Minus, Plus, Menu, X, Save, Trash2, RotateCcw } from 'lucide-react';
+import { Play, Pause, BookmarkPlus, ChevronLeft, Type, Minus, Plus, Menu, X, Save, Trash2, RotateCcw, Rabbit, Turtle, Sparkles } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -147,7 +147,7 @@ export default function RSVPReader({
     }, [currentIndex, isPlaying, saveProgress]);
 
     // Playback Loop using requestAnimationFrame for smooth non-blocking execution
-    const animate = useCallback((time: number) => {
+    const animate = useCallback(function animationLoop(time: number) {
         if (!isPlaying) return;
 
         let interval = 60000 / wpm; // ms per word
@@ -175,7 +175,7 @@ export default function RSVPReader({
             });
             lastUpdateRef.current = time;
         }
-        requestRef.current = requestAnimationFrame(animate);
+        requestRef.current = requestAnimationFrame(animationLoop);
     }, [isPlaying, wpm, totalWords, isPunctuationPauseEnabled, words]);
 
     useEffect(() => {
@@ -209,7 +209,7 @@ export default function RSVPReader({
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [totalWords]);
+    }, [totalWords, isBookmarkModalOpen]);
 
     return (
         <div className="flex flex-col h-full min-h-[80vh] w-full max-w-4xl mx-auto p-4 sm:p-8 relative">
@@ -277,7 +277,7 @@ export default function RSVPReader({
                                             </div>
                                             <div className="flex justify-between w-full text-xs text-foreground/50 mt-1">
                                                 <span>Word {bm.word_index.toLocaleString()}</span>
-                                                <span className="italic truncate max-w-[120px]">"{words.slice(bm.word_index, bm.word_index + 3).join(' ')}..."</span>
+                                                <span className="italic truncate max-w-[120px]">&quot;{words.slice(bm.word_index, bm.word_index + 3).join(' ')}...&quot;</span>
                                             </div>
                                         </button>
                                     </li>
@@ -370,10 +370,10 @@ export default function RSVPReader({
                     <div className="w-px h-4 bg-foreground/20 mx-1" />
                     <button
                         onClick={() => setIsPunctuationPauseEnabled(p => !p)}
-                        className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 font-medium rounded-full transition-colors border ${isPunctuationPauseEnabled ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/60 hover:text-foreground border-foreground/20'}`}
-                        title="Smart Punctuation Pauses"
+                        className={`p-1.5 sm:p-2 rounded-full transition-all ${isPunctuationPauseEnabled ? 'bg-foreground text-background shadow-md scale-105' : 'text-foreground/50 hover:bg-foreground/5 hover:text-foreground'}`}
+                        title={isPunctuationPauseEnabled ? "Smart Pause: ON" : "Smart Pause: OFF"}
                     >
-                        {isPunctuationPauseEnabled ? 'Smart Pause: ON' : 'Smart Pause: OFF'}
+                        <Sparkles className="w-4 h-4" />
                     </button>
 
                     <div className="w-px h-4 bg-foreground/20 mx-1" />
@@ -401,72 +401,83 @@ export default function RSVPReader({
             {/* Controls */}
             <div className="mt-auto flex flex-col gap-8 bg-background p-6 rounded-2xl border shadow-sm">
 
-                {/* Playback Controls */}
-                <div className="flex justify-center items-center gap-6">
-                    <button
-                        onClick={() => setCurrentIndex(p => Math.max(0, p - 15))}
-                        className="p-3 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors flex flex-col items-center gap-0.5"
-                        title="Rollback 15 words"
-                    >
-                        <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
-                        <span className="text-[10px] font-bold">-15</span>
-                    </button>
-
-                    <button
-                        onClick={() => setIsPlaying(!isPlaying)}
-                        className="p-4 bg-foreground text-background rounded-full hover:scale-105 transition-transform"
-                    >
-                        {isPlaying ? <Pause className="w-8 h-8 sm:w-10 sm:h-10 fill-current" /> : <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />}
-                    </button>
-
-                    <button
-                        onClick={() => setCurrentIndex(p => Math.min(totalWords - 1, p + 15))}
-                        className="p-3 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors flex flex-col items-center gap-0.5"
-                        title="Forward 15 words"
-                    >
-                        <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 scale-x-[-1]" />
-                        <span className="text-[10px] font-bold">+15</span>
-                    </button>
+                {/* Progress timeline */}
+                <div className="flex flex-col gap-3 w-full">
+                    <input
+                        type="range"
+                        min="0"
+                        max={totalWords - 1}
+                        value={currentIndex}
+                        onChange={(e) => {
+                            setIsPlaying(false);
+                            setCurrentIndex(Number(e.target.value));
+                        }}
+                        className="w-full h-2.5 bg-foreground/10 rounded-lg appearance-none cursor-pointer accent-foreground"
+                    />
+                    <div className="flex justify-between text-[11px] text-foreground/50 font-bold uppercase tracking-wider px-1">
+                        <span>{progressPercent.toFixed(1)}% complete</span>
+                        <span>{totalWords - currentIndex} words left</span>
+                    </div>
                 </div>
 
-                {/* Sliders */}
-                <div className="grid md:grid-cols-2 gap-8">
+                {/* Bottom Row: Playback & Speed */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
 
-                    {/* Progress timeline */}
-                    <div className="flex flex-col gap-2">
-                        <div className="flex justify-between text-xs text-foreground/60 font-medium">
-                            <span>{progressPercent.toFixed(1)}%</span>
-                            <span>{totalWords - currentIndex} words left</span>
-                        </div>
-                        <input
-                            type="range"
-                            min="0"
-                            max={totalWords - 1}
-                            value={currentIndex}
-                            onChange={(e) => {
-                                setIsPlaying(false);
-                                setCurrentIndex(Number(e.target.value));
-                            }}
-                            className="w-full h-2 bg-foreground/10 rounded-lg appearance-none cursor-pointer accent-foreground"
-                        />
+                    {/* Left Spacer */}
+                    <div className="hidden sm:block sm:flex-1" />
+
+                    {/* Playback Controls */}
+                    <div className="flex justify-center items-center gap-8 sm:flex-1">
+                        <button
+                            onClick={() => setCurrentIndex(p => Math.max(0, p - 15))}
+                            className="p-2 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors flex items-center justify-center group"
+                            title="Rollback 15 words"
+                        >
+                            <div className="relative flex items-center justify-center">
+                                <RotateCcw className="w-8 h-8" strokeWidth={2} />
+                                <span className="absolute text-[10px] font-bold mt-1 tracking-tighter group-active:scale-95 transition-transform">-15</span>
+                            </div>
+                        </button>
+
+                        <button
+                            onClick={() => setIsPlaying(!isPlaying)}
+                            className="p-5 bg-foreground text-background rounded-full hover:scale-105 active:scale-95 transition-all shadow-lg"
+                        >
+                            {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
+                        </button>
+
+                        <button
+                            onClick={() => setCurrentIndex(p => Math.min(totalWords - 1, p + 15))}
+                            className="p-2 text-foreground/50 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors flex items-center justify-center group"
+                            title="Forward 15 words"
+                        >
+                            <div className="relative flex items-center justify-center">
+                                <RotateCcw className="w-8 h-8 scale-x-[-1]" strokeWidth={2} />
+                                <span className="absolute text-[10px] font-bold mt-1 tracking-tighter group-active:scale-95 transition-transform">+15</span>
+                            </div>
+                        </button>
                     </div>
 
                     {/* WPM Control */}
-                    <div className="flex flex-col gap-3">
-                        <div className="text-center sm:text-left text-xs text-foreground/60 font-medium uppercase tracking-wider pl-2">Speed (WPM)</div>
-                        <div className="flex items-center justify-between border bg-foreground/5 rounded-2xl p-1.5 shadow-sm">
+                    <div className="flex justify-end sm:flex-1 w-full sm:w-auto">
+                        <div className="flex flex-1 sm:flex-none items-center justify-between bg-foreground/5 border border-foreground/10 rounded-full p-2 shadow-sm">
                             <button
-                                onClick={() => setWpm(p => Math.max(100, p - 50))}
-                                className="p-3 hover:bg-background rounded-xl transition-all font-semibold active:scale-95 text-foreground/80 hover:text-foreground border border-transparent hover:border-foreground/10 hover:shadow-sm"
+                                onClick={() => setWpm(p => Math.max(100, p - 25))}
+                                className="p-3 hover:bg-background rounded-full transition-all text-foreground/60 hover:text-foreground shadow-none hover:shadow-sm"
+                                title="Decrease Speed"
                             >
-                                <Minus className="w-5 h-5 sm:w-6 sm:h-6" />
+                                <Turtle className="w-6 h-6" strokeWidth={2} />
                             </button>
-                            <span className="text-3xl sm:text-4xl font-bold w-24 text-center tabular-nums tracking-tight">{wpm}</span>
+                            <div className="flex flex-col items-center justify-center w-24">
+                                <span className="text-2xl font-bold tabular-nums leading-none tracking-tight">{wpm}</span>
+                                <span className="text-[10px] uppercase font-bold text-foreground/40 tracking-widest mt-1">WPM</span>
+                            </div>
                             <button
-                                onClick={() => setWpm(p => Math.min(1000, p + 50))}
-                                className="p-3 hover:bg-background rounded-xl transition-all font-semibold active:scale-95 text-foreground/80 hover:text-foreground border border-transparent hover:border-foreground/10 hover:shadow-sm"
+                                onClick={() => setWpm(p => Math.min(1000, p + 25))}
+                                className="p-3 hover:bg-background rounded-full transition-all text-foreground/60 hover:text-foreground shadow-none hover:shadow-sm"
+                                title="Increase Speed"
                             >
-                                <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
+                                <Rabbit className="w-6 h-6" strokeWidth={2} />
                             </button>
                         </div>
                     </div>

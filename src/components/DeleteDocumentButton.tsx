@@ -14,7 +14,7 @@ export default function DeleteDocumentButton({ documentId, storagePath }: { docu
             startTransition(async () => {
                 try {
                     await deleteDocument(documentId, storagePath);
-                } catch (err) {
+                } catch {
                     alert('Failed to delete document');
                 }
             });

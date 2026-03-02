@@ -49,7 +49,7 @@ export default function DocumentUpload({ onUploadSuccess }: { onUploadSuccess: (
             setStatus({ type: 'idle', message: 'Saving document metadata...' });
 
             // 3. Insert into Documents table
-            const { data: docData, error: docError } = await supabase
+            const { error: docError } = await supabase
                 .from('documents')
                 .insert({
                     id: fileId,
@@ -91,7 +91,8 @@ export default function DocumentUpload({ onUploadSuccess }: { onUploadSuccess: (
                 setStatus({ type: 'idle', message: '' });
             }, 2000);
 
-        } catch (error: any) {
+        } catch (err) {
+            const error = err as Error;
             console.error(error);
             setStatus({ type: 'error', message: error.message || 'An error occurred during upload' });
         } finally {

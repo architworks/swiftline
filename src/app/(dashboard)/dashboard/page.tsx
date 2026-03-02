@@ -52,21 +52,22 @@ export default async function DashboardPage() {
                         </div>
                     ) : (
                         <div className="grid gap-4 sm:grid-cols-2">
-                            {documents.map((doc: any) => {
-                                const progress = doc.reading_progress[0]
+                            {documents.map((doc: unknown) => {
+                                const typedDoc = doc as { id: string; title: string; total_word_count: number; storage_path: string; reading_progress: { percent_complete: number; updated_at: string }[] };
+                                const progress = typedDoc.reading_progress[0]
                                 const percent = progress?.percent_complete || 0
                                 const lastOpened = progress?.updated_at ? new Date(progress.updated_at).toLocaleDateString() : 'Never'
                                 return (
-                                    <Link key={doc.id} href={`/reader/${doc.id}`} className="block border p-4 rounded-lg flex flex-col gap-2 hover:border-blue-500 hover:bg-foreground/5 transition-all cursor-pointer relative group shadow-sm hover:shadow-md">
+                                    <Link key={typedDoc.id} href={`/reader/${typedDoc.id}`} className="block border p-4 rounded-lg flex flex-col gap-2 hover:border-blue-500 hover:bg-foreground/5 transition-all cursor-pointer relative group shadow-sm hover:shadow-md">
                                         <div className="flex justify-between items-start gap-4">
-                                            <h3 className="font-semibold text-lg truncate flex-1" title={doc.title}>{doc.title}</h3>
+                                            <h3 className="font-semibold text-lg truncate flex-1" title={typedDoc.title}>{typedDoc.title}</h3>
                                             <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                                <DeleteDocumentButton documentId={doc.id} storagePath={doc.storage_path} />
+                                                <DeleteDocumentButton documentId={typedDoc.id} storagePath={typedDoc.storage_path} />
                                             </div>
                                         </div>
                                         <div className="flex justify-between text-xs text-foreground/60 mt-1">
                                             <div className="flex flex-col gap-1">
-                                                <span>{doc.total_word_count.toLocaleString()} words</span>
+                                                <span>{typedDoc.total_word_count.toLocaleString()} words</span>
                                                 <span className="text-foreground/40">Last opened: {lastOpened}</span>
                                             </div>
                                             <span className="font-medium bg-foreground/10 px-2 py-1 rounded-md">{Math.round(percent)}%</span>
