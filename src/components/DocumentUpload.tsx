@@ -28,7 +28,7 @@ export default function DocumentUpload({ onUploadSuccess }: { onUploadSuccess: (
             if (!user) throw new Error("Not authenticated");
 
             // 1. Parse content client-side
-            const words = await extractDocumentWords(file);
+            const { words, chapters } = await extractDocumentWords(file);
             if (words.length === 0) throw new Error("Could not extract any text from the document.");
 
             setStatus({ type: 'idle', message: 'Uploading file to storage...' });
@@ -69,7 +69,8 @@ export default function DocumentUpload({ onUploadSuccess }: { onUploadSuccess: (
                 .insert({
                     id: fileId,
                     user_id: user.id,
-                    content_array: words // JSONB handles the array transparently
+                    content_array: words,
+                    chapters: chapters
                 });
 
             if (contentError) throw new Error("Failed to save parsed document contents");

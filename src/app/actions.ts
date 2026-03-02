@@ -68,3 +68,33 @@ export async function signInWithGoogle() {
         redirect(data.url)
     }
 }
+
+export async function deleteDocument(documentId: string, storagePath: string) {
+    const supabase = await createClient()
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) throw new Error("Unauthorized")
+
+    // The database records (`documents`, `document_contents`, `reading_progress`, `bookmarks`)
+    // will be cascade-deleted because we set `ON DELETE CASCADE` in our SQL schema.
+    const { error: dbError } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', documentId)
+        .eq('user_id', user.id)
+
+    if (dbError) {
+        console.error("Failed to delete document from database", dbError)
+        throw new Error("Failed to delete document")
+    }
+
+    // Attempt to delete from the storage bucket as well. 
+    // It's okay if it fails (e.g., if the user already deleted it manually).
+    if (storagePath) {
+        await supabase.storage
+            .from('documents')
+            .remove([storagePath])
+    }
+
+    revalidatePath('/dashboard')
+}

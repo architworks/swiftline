@@ -32,7 +32,7 @@ export default async function ReaderPage({
     // Fetch document contents (the array of words)
     const { data: content, error: contentError } = await supabase
         .from('document_contents')
-        .select('content_array')
+        .select('content_array, chapters')
         .eq('id', id)
         .single();
 
@@ -47,8 +47,17 @@ export default async function ReaderPage({
         .eq('document_id', id)
         .single();
 
+    // Fetch bookmarks
+    const { data: bookmarksData } = await supabase
+        .from('bookmarks')
+        .select('*')
+        .eq('document_id', id)
+        .order('word_index', { ascending: true });
+
     const initialIndex = progress?.current_word_index || 0;
     const words: string[] = content.content_array || [];
+    const chapters = content.chapters || [];
+    const bookmarks = bookmarksData || [];
 
     return (
         <div className="w-full h-full min-h-screen bg-background text-foreground">
@@ -56,6 +65,8 @@ export default async function ReaderPage({
                 documentId={id}
                 title={document.title}
                 words={words}
+                chapters={chapters}
+                initialBookmarks={bookmarks}
                 initialIndex={initialIndex}
             />
         </div>

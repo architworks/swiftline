@@ -1,25 +1,60 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, FastForward, Rewind, BookmarkPlus, ChevronLeft } from 'lucide-react';
+import { Play, Pause, FastForward, Rewind, BookmarkPlus, ChevronLeft, Type, Minus, Plus, Menu, X, Save } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
+import ThemeToggle from '@/components/ThemeToggle';
+
+export interface Chapter {
+    title: string;
+    word_index: number;
+}
+
+export interface Bookmark {
+    id: string;
+    word_index: number;
+    note?: string;
+}
 
 export default function RSVPReader({
     documentId,
     title,
     words,
+    chapters = [],
+    initialBookmarks = [],
     initialIndex
 }: {
     documentId: string;
     title: string;
     words: string[];
+    chapters?: Chapter[];
+    initialBookmarks?: Bookmark[];
     initialIndex: number;
 }) {
     const [isPlaying, setIsPlaying] = useState(false);
     const [wpm, setWpm] = useState(300);
     const [currentIndex, setCurrentIndex] = useState(initialIndex);
     const [isSaving, setIsSaving] = useState(false);
+
+    // Typography preferences
+    const [fontSize, setFontSize] = useState(2); // Mid size default
+    const [fontFamily, setFontFamily] = useState('font-mono');
+    const fontSizes = [
+        'text-2xl sm:text-3xl md:text-4xl',
+        'text-3xl sm:text-4xl md:text-5xl',
+        'text-4xl sm:text-5xl md:text-6xl',
+        'text-5xl sm:text-6xl md:text-7xl',
+        'text-6xl sm:text-7xl md:text-8xl',
+    ];
+
+    const [isTocOpen, setIsTocOpen] = useState(false);
+
+    // Bookmark State
+    const [bookmarks, setBookmarks] = useState<Bookmark[]>(initialBookmarks);
+    const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false);
+    const [bookmarkNote, setBookmarkNote] = useState('');
+    const [isSavingBookmark, setIsSavingBookmark] = useState(false);
 
     const lastUpdateRef = useRef<number>(0);
     const requestRef = useRef<number | null>(null);
@@ -46,6 +81,31 @@ export default function RSVPReader({
 
         setIsSaving(false);
     }, [documentId, totalWords]);
+
+    const handleCreateBookmark = useCallback(async () => {
+        if (isSavingBookmark) return;
+        setIsSavingBookmark(true);
+        const supabase = createClient();
+
+        const { data, error } = await supabase
+            .from('bookmarks')
+            .insert({
+                document_id: documentId,
+                word_index: currentIndex,
+                note: bookmarkNote.trim() || null,
+            })
+            .select()
+            .single();
+
+        if (!error && data) {
+            setBookmarks(prev => [...prev, data as Bookmark].sort((a, b) => a.word_index - b.word_index));
+            setIsBookmarkModalOpen(false);
+            setBookmarkNote('');
+        } else {
+            console.error("Failed to save bookmark", error);
+        }
+        setIsSavingBookmark(false);
+    }, [isSavingBookmark, documentId, currentIndex, bookmarkNote]);
 
     // Debounced save
     useEffect(() => {
@@ -94,6 +154,8 @@ export default function RSVPReader({
     // Keyboard shortcuts
     useEffect(() => {
         const handleKeyDown = (e: KeyboardEvent) => {
+            if (isBookmarkModalOpen) return; // Disable shortcuts when modal is open
+
             if (e.code === 'Space') {
                 e.preventDefault();
                 setIsPlaying(p => !p);
@@ -112,29 +174,167 @@ export default function RSVPReader({
     }, [totalWords]);
 
     return (
-        <div className="flex flex-col h-full min-h-[80vh] w-full max-w-4xl mx-auto p-4 sm:p-8">
+        <div className="flex flex-col h-full min-h-[80vh] w-full max-w-4xl mx-auto p-4 sm:p-8 relative">
+
+            {/* Table of Contents Overlay */}
+            {isTocOpen && (
+                <div className="absolute inset-0 z-50 flex">
+                    {/* The Sidebar */}
+                    <div className="w-full sm:w-80 bg-background border-r h-full shadow-2xl flex flex-col pt-4 pb-8 overflow-y-auto z-50">
+                        <div className="flex justify-between items-center px-6 mb-6">
+                            <h3 className="font-semibold text-lg">Table of Contents</h3>
+                            <button onClick={() => setIsTocOpen(false)} className="p-2 hover:bg-foreground/5 rounded-full"><X className="w-5 h-5" /></button>
+                        </div>
+                        {chapters.length === 0 ? (
+                            <div className="px-6 text-sm text-foreground/50">No chapters found.</div>
+                        ) : (
+                            <ul className="flex flex-col">
+                                {chapters.map((chap, i) => (
+                                    <li key={i}>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentIndex(chap.word_index);
+                                                setIsPlaying(false);
+                                                setIsTocOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5"
+                                        >
+                                            <span className="font-medium text-foreground/90">{chap.title}</span>
+                                            <span className="text-xs text-foreground/50">Word {chap.word_index.toLocaleString()}</span>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+
+                        {/* Bookmarks Section */}
+                        <div className="flex justify-between items-center px-6 mt-8 mb-4 border-t border-foreground/10 pt-8">
+                            <h3 className="font-semibold text-lg flex items-center gap-2">Bookmarks</h3>
+                        </div>
+                        {bookmarks.length === 0 ? (
+                            <div className="px-6 text-sm text-foreground/50">No bookmarks yet.</div>
+                        ) : (
+                            <ul className="flex flex-col">
+                                {bookmarks.map((bm, i) => (
+                                    <li key={i}>
+                                        <button
+                                            onClick={() => {
+                                                setCurrentIndex(bm.word_index);
+                                                setIsPlaying(false);
+                                                setIsTocOpen(false);
+                                            }}
+                                            className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5"
+                                        >
+                                            <span className="font-medium text-foreground/90">{bm.note || `Bookmark #${i + 1}`}</span>
+                                            <div className="flex justify-between w-full text-xs text-foreground/50">
+                                                <span>Word {bm.word_index.toLocaleString()}</span>
+                                                <span className="italic truncate max-w-[120px]">"{words.slice(bm.word_index, bm.word_index + 3).join(' ')}..."</span>
+                                            </div>
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        )}
+                    </div>
+                    {/* The Clickaway Backdrop */}
+                    <div className="flex-1 bg-black/20 backdrop-blur-sm" onClick={() => setIsTocOpen(false)} />
+                </div>
+            )}
+
+            {/* Bookmark Modal */}
+            {isBookmarkModalOpen && (
+                <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setIsBookmarkModalOpen(false)} />
+                    <div className="bg-background rounded-xl shadow-2xl z-10 w-full max-w-sm overflow-hidden flex flex-col border border-foreground/10 p-6 animate-in fade-in zoom-in-95 duration-200">
+                        <h3 className="text-xl font-bold mb-4">Create Bookmark</h3>
+                        <p className="text-sm text-foreground/60 mb-4">You are bookmarking word <span className="font-mono text-foreground font-medium">{currentIndex.toLocaleString()}</span>. You can optionally add a note below.</p>
+                        <input
+                            type="text"
+                            className="w-full bg-foreground/5 border border-foreground/10 rounded-lg p-3 text-sm outline-none focus:border-blue-500 transition-colors mb-6"
+                            placeholder="My note (optional)"
+                            value={bookmarkNote}
+                            onChange={(e) => setBookmarkNote(e.target.value)}
+                            autoFocus
+                            onKeyDown={async (e) => {
+                                if (e.key === 'Enter' && !isSavingBookmark) {
+                                    handleCreateBookmark();
+                                }
+                            }}
+                        />
+                        <div className="flex justify-end gap-3">
+                            <button onClick={() => setIsBookmarkModalOpen(false)} className="px-4 py-2 text-sm font-medium hover:bg-foreground/5 rounded-lg transition-colors">Cancel</button>
+                            <button
+                                onClick={handleCreateBookmark}
+                                disabled={isSavingBookmark}
+                                className="px-5 py-2 text-sm font-medium bg-foreground text-background rounded-lg hover:scale-105 active:scale-95 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isSavingBookmark ? 'Saving...' : <><Save className="w-4 h-4" /> Save</>}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Top Bar */}
             <div className="flex justify-between items-center mb-12">
-                <Link
-                    href="/dashboard"
-                    className="flex items-center gap-2 text-foreground/60 hover:text-foreground transition-colors"
-                >
-                    <ChevronLeft className="w-5 h-5" />
-                    Back to Library
-                </Link>
-                <div className="font-semibold text-lg truncate max-w-[50%]">{title}</div>
-                <div className="flex items-center gap-2 text-sm text-foreground/50">
-                    {isSaving ? 'Saving...' : 'Saved'}
+                <div className="flex items-center gap-2">
+                    <Link
+                        href="/dashboard"
+                        className="flex items-center gap-1 text-foreground/60 hover:text-foreground transition-colors p-2 -ml-2 rounded-md hover:bg-foreground/5"
+                    >
+                        <ChevronLeft className="w-5 h-5" />
+                        <span className="hidden sm:inline font-medium">Library</span>
+                    </Link>
+                    <button
+                        onClick={() => setIsTocOpen(true)}
+                        className="flex items-center gap-2 p-2 rounded-md hover:bg-foreground/5 text-foreground/60 hover:text-foreground transition-colors"
+                        title="Table of Contents"
+                    >
+                        <Menu className="w-5 h-5" />
+                    </button>
+                </div>
+
+                <div className="flex items-center gap-2 sm:gap-4 bg-foreground/5 py-1 px-2 sm:px-3 rounded-full border shadow-sm">
+                    <button
+                        onClick={() => {
+                            setIsPlaying(false);
+                            setBookmarkNote('');
+                            setIsBookmarkModalOpen(true);
+                        }}
+                        className="p-1.5 hover:text-foreground text-foreground/60 hover:bg-foreground/5 rounded-full transition-colors"
+                        title="Create Bookmark"
+                    >
+                        <BookmarkPlus className="w-4 h-4" />
+                    </button>
+                    <div className="w-px h-4 bg-foreground/20 mx-1 hidden sm:block" />
+
+                    <button onClick={() => setFontSize(p => Math.max(0, p - 1))} className="p-1 hover:text-foreground text-foreground/60 transition-colors" title="Decrease Font Size"><Minus className="w-4 h-4" /></button>
+                    <Type className="w-4 h-4 text-foreground/40 hidden sm:block" />
+                    <button onClick={() => setFontSize(p => Math.min(fontSizes.length - 1, p + 1))} className="p-1 hover:text-foreground text-foreground/60 transition-colors" title="Increase Font Size"><Plus className="w-4 h-4" /></button>
+
+                    <div className="w-px h-4 bg-foreground/20 mx-1" />
+
+                    <button onClick={() => setFontFamily('font-sans')} className={`text-sm px-1 sm:px-2 transition-colors ${fontFamily === 'font-sans' ? 'text-foreground font-medium' : 'text-foreground/50 hover:text-foreground/80'}`}>Aa</button>
+                    <button onClick={() => setFontFamily('font-serif')} className={`text-sm px-1 sm:px-2 font-serif transition-colors ${fontFamily === 'font-serif' ? 'text-foreground font-medium' : 'text-foreground/50 hover:text-foreground/80'}`}>Aa</button>
+                    <button onClick={() => setFontFamily('font-mono')} className={`text-sm px-1 sm:px-2 font-mono transition-colors ${fontFamily === 'font-mono' ? 'text-foreground font-medium' : 'text-foreground/50 hover:text-foreground/80'}`}>Aa</button>
+
+                    <div className="w-px h-4 bg-foreground/20 mx-1" />
+                    <ThemeToggle />
+                </div>
+
+                <div className="flex items-center gap-2 text-sm text-foreground/50 text-right">
+                    <span className="hidden sm:inline max-w-[150px] truncate" title={title}>{title}</span>
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: isSaving ? '#fbbf24' : '#22c55e' }} title={isSaving ? 'Saving...' : 'Saved'} />
                 </div>
             </div>
 
             {/* Reader Zone */}
             <div className="flex-1 flex flex-col justify-center items-center py-20">
-                <div className="relative w-full max-w-md h-32 flex items-center justify-center bg-foreground/5 rounded-2xl shadow-inner overflow-hidden">
+                <div className="relative w-full max-w-2xl h-48 flex items-center justify-center rounded-2xl">
                     {/* Center Alignment Guides */}
                     <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500/20 -translate-x-1/2" />
 
-                    <div className="text-4xl sm:text-5xl md:text-6xl font-medium tracking-wide text-foreground font-mono">
+                    <div className={`${fontSizes[fontSize]} ${fontFamily} font-medium tracking-wide text-foreground transition-all duration-200`}>
                         {currentWord}
                     </div>
                 </div>
