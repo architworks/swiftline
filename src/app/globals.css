@@ -14,6 +14,7 @@
   color utility to any element that depends on these defaults.
 */
 @layer base {
+
   *,
   ::after,
   ::before,
@@ -36,13 +37,11 @@
   --btn-background-hover: #e5e7eb;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    --btn-background: #27272a;
-    --btn-background-hover: #3f3f46;
-  }
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  --btn-background: #27272a;
+  --btn-background-hover: #3f3f46;
 }
 
 body {

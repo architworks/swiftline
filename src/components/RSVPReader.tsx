@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { Play, Pause, FastForward, Rewind, BookmarkPlus, ChevronLeft, Type, Minus, Plus, Menu, X, Save } from 'lucide-react';
+import { Play, Pause, FastForward, Rewind, BookmarkPlus, ChevronLeft, Type, Minus, Plus, Menu, X, Save, Trash2, RotateCcw } from 'lucide-react';
 import Link from 'next/link';
 import { createClient } from '@/utils/supabase/client';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -55,10 +55,20 @@ export default function RSVPReader({
     const [isBookmarkModalOpen, setIsBookmarkModalOpen] = useState(false);
     const [bookmarkNote, setBookmarkNote] = useState('');
     const [isSavingBookmark, setIsSavingBookmark] = useState(false);
+    const [isDeletingBookmark, setIsDeletingBookmark] = useState<string | null>(null);
+
+    // Reading Engine Settings
+    const [isPunctuationPauseEnabled, setIsPunctuationPauseEnabled] = useState(true);
 
     const lastUpdateRef = useRef<number>(0);
     const requestRef = useRef<number | null>(null);
     const syncTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+    // Maintain a ref to the current index for the animation loop
+    const currentIndexRef = useRef(currentIndex);
+    useEffect(() => {
+        currentIndexRef.current = currentIndex;
+    }, [currentIndex]);
 
     const totalWords = words.length;
     const currentWord = words[currentIndex] || '';
@@ -107,6 +117,21 @@ export default function RSVPReader({
         setIsSavingBookmark(false);
     }, [isSavingBookmark, documentId, currentIndex, bookmarkNote]);
 
+    const handleDeleteBookmark = async (e: React.MouseEvent, bmId: string) => {
+        e.stopPropagation();
+        setIsDeletingBookmark(bmId);
+        const supabase = createClient();
+
+        const { error } = await supabase.from('bookmarks').delete().eq('id', bmId);
+
+        if (!error) {
+            setBookmarks(prev => prev.filter(b => b.id !== bmId));
+        } else {
+            console.error("Failed to delete bookmark", error);
+        }
+        setIsDeletingBookmark(null);
+    };
+
     // Debounced save
     useEffect(() => {
         if (syncTimeoutRef.current) clearTimeout(syncTimeoutRef.current);
@@ -125,7 +150,20 @@ export default function RSVPReader({
     const animate = useCallback((time: number) => {
         if (!isPlaying) return;
 
-        const interval = 60000 / wpm; // ms per word
+        let interval = 60000 / wpm; // ms per word
+
+        // Smart Punctuation Pauses
+        if (isPunctuationPauseEnabled && words.length > 0) {
+            const currentRenderedWord = words[currentIndexRef.current] || '';
+            // Match sentence-ending punctuation (optionally followed by quotes/parentheses)
+            if (currentRenderedWord.match(/[\.\!\?]["'\)]?$/)) {
+                interval = interval * 2.5;
+            }
+            // Match minor punctuation
+            else if (currentRenderedWord.match(/[\,\;\:]["'\)]?$/)) {
+                interval = interval * 1.5;
+            }
+        }
 
         if (time - lastUpdateRef.current >= interval) {
             setCurrentIndex((prev) => {
@@ -138,7 +176,7 @@ export default function RSVPReader({
             lastUpdateRef.current = time;
         }
         requestRef.current = requestAnimationFrame(animate);
-    }, [isPlaying, wpm, totalWords]);
+    }, [isPlaying, wpm, totalWords, isPunctuationPauseEnabled, words]);
 
     useEffect(() => {
         if (isPlaying) {
@@ -223,10 +261,21 @@ export default function RSVPReader({
                                                 setIsPlaying(false);
                                                 setIsTocOpen(false);
                                             }}
-                                            className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5"
+                                            className="w-full text-left px-6 py-3 hover:bg-foreground/5 text-sm transition-colors flex flex-col gap-1 border-b border-foreground/5 group"
                                         >
-                                            <span className="font-medium text-foreground/90">{bm.note || `Bookmark #${i + 1}`}</span>
-                                            <div className="flex justify-between w-full text-xs text-foreground/50">
+                                            <div className="flex justify-between items-start w-full gap-2">
+                                                <span className="font-medium text-foreground/90 leading-tight pt-1">{bm.note || `Bookmark #${i + 1}`}</span>
+                                                <div
+                                                    role="button"
+                                                    tabIndex={0}
+                                                    onClick={(e) => handleDeleteBookmark(e, bm.id)}
+                                                    className={`p-1.5 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-md transition-all ${isDeletingBookmark === bm.id ? 'opacity-50 pointer-events-none' : ''}`}
+                                                    title="Delete Bookmark"
+                                                >
+                                                    <Trash2 className="w-4 h-4" />
+                                                </div>
+                                            </div>
+                                            <div className="flex justify-between w-full text-xs text-foreground/50 mt-1">
                                                 <span>Word {bm.word_index.toLocaleString()}</span>
                                                 <span className="italic truncate max-w-[120px]">"{words.slice(bm.word_index, bm.word_index + 3).join(' ')}..."</span>
                                             </div>
@@ -319,6 +368,15 @@ export default function RSVPReader({
                     <button onClick={() => setFontFamily('font-mono')} className={`text-sm px-1 sm:px-2 font-mono transition-colors ${fontFamily === 'font-mono' ? 'text-foreground font-medium' : 'text-foreground/50 hover:text-foreground/80'}`}>Aa</button>
 
                     <div className="w-px h-4 bg-foreground/20 mx-1" />
+                    <button
+                        onClick={() => setIsPunctuationPauseEnabled(p => !p)}
+                        className={`text-[10px] sm:text-xs px-2 sm:px-3 py-1 font-medium rounded-full transition-colors border ${isPunctuationPauseEnabled ? 'bg-foreground text-background border-foreground' : 'bg-transparent text-foreground/60 hover:text-foreground border-foreground/20'}`}
+                        title="Smart Punctuation Pauses"
+                    >
+                        {isPunctuationPauseEnabled ? 'Smart Pause: ON' : 'Smart Pause: OFF'}
+                    </button>
+
+                    <div className="w-px h-4 bg-foreground/20 mx-1" />
                     <ThemeToggle />
                 </div>
 
@@ -346,26 +404,28 @@ export default function RSVPReader({
                 {/* Playback Controls */}
                 <div className="flex justify-center items-center gap-6">
                     <button
-                        onClick={() => setCurrentIndex(p => Math.max(0, p - 10))}
-                        className="p-3 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
-                        title="Rewind 10 words"
+                        onClick={() => setCurrentIndex(p => Math.max(0, p - 15))}
+                        className="p-3 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors flex flex-col items-center gap-0.5"
+                        title="Rollback 15 words"
                     >
-                        <Rewind className="w-6 h-6" />
+                        <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6" />
+                        <span className="text-[10px] font-bold">-15</span>
                     </button>
 
                     <button
                         onClick={() => setIsPlaying(!isPlaying)}
                         className="p-4 bg-foreground text-background rounded-full hover:scale-105 transition-transform"
                     >
-                        {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current ml-1" />}
+                        {isPlaying ? <Pause className="w-8 h-8 sm:w-10 sm:h-10 fill-current" /> : <Play className="w-8 h-8 sm:w-10 sm:h-10 fill-current ml-1" />}
                     </button>
 
                     <button
-                        onClick={() => setCurrentIndex(p => Math.min(totalWords - 1, p + 10))}
-                        className="p-3 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors"
-                        title="Forward 10 words"
+                        onClick={() => setCurrentIndex(p => Math.min(totalWords - 1, p + 15))}
+                        className="p-3 text-foreground/70 hover:text-foreground hover:bg-foreground/5 rounded-full transition-colors flex flex-col items-center gap-0.5"
+                        title="Forward 15 words"
                     >
-                        <FastForward className="w-6 h-6" />
+                        <RotateCcw className="w-5 h-5 sm:w-6 sm:h-6 scale-x-[-1]" />
+                        <span className="text-[10px] font-bold">+15</span>
                     </button>
                 </div>
 
@@ -392,20 +452,23 @@ export default function RSVPReader({
                     </div>
 
                     {/* WPM Control */}
-                    <div className="flex flex-col gap-2">
-                        <div className="flex justify-between text-xs text-foreground/60 font-medium">
-                            <span>Speed</span>
-                            <span>{wpm} WPM</span>
+                    <div className="flex flex-col gap-3">
+                        <div className="text-center sm:text-left text-xs text-foreground/60 font-medium uppercase tracking-wider pl-2">Speed (WPM)</div>
+                        <div className="flex items-center justify-between border bg-foreground/5 rounded-2xl p-1.5 shadow-sm">
+                            <button
+                                onClick={() => setWpm(p => Math.max(100, p - 50))}
+                                className="p-3 hover:bg-background rounded-xl transition-all font-semibold active:scale-95 text-foreground/80 hover:text-foreground border border-transparent hover:border-foreground/10 hover:shadow-sm"
+                            >
+                                <Minus className="w-5 h-5 sm:w-6 sm:h-6" />
+                            </button>
+                            <span className="text-3xl sm:text-4xl font-bold w-24 text-center tabular-nums tracking-tight">{wpm}</span>
+                            <button
+                                onClick={() => setWpm(p => Math.min(1000, p + 50))}
+                                className="p-3 hover:bg-background rounded-xl transition-all font-semibold active:scale-95 text-foreground/80 hover:text-foreground border border-transparent hover:border-foreground/10 hover:shadow-sm"
+                            >
+                                <Plus className="w-5 h-5 sm:w-6 sm:h-6" />
+                            </button>
                         </div>
-                        <input
-                            type="range"
-                            min="100"
-                            max="1000"
-                            step="10"
-                            value={wpm}
-                            onChange={(e) => setWpm(Number(e.target.value))}
-                            className="w-full h-2 bg-foreground/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                        />
                     </div>
                 </div>
 
