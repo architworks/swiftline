@@ -45,10 +45,10 @@
 }
 
 .sepia {
-  --background: #fbf0d9;
-  --foreground: #5f4b32;
-  --btn-background: #f2e1c1;
-  --btn-background-hover: #e6cba3;
+  --background: #f0e6d3;
+  --foreground: #3c3028;
+  --btn-background: #e4d5be;
+  --btn-background-hover: #d6c3a5;
 }
 
 body {
@@ -57,6 +57,7 @@ body {
   font-family: Arial, Helvetica, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.7s ease, color 0.7s ease;
 }
 
 * {
