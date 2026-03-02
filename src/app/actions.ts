@@ -3,6 +3,17 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/utils/supabase/server'
+import { headers } from 'next/headers'
+
+// Dynamically determine the base URL from the incoming request.
+// This works on localhost, Vercel, preview deployments, and custom domains
+// without needing any environment variables.
+async function getBaseUrl() {
+    const headerList = await headers()
+    const host = headerList.get('host') ?? 'localhost:3000'
+    const proto = host.startsWith('localhost') ? 'http' : 'https'
+    return `${proto}://${host}`
+}
 
 export async function login(formData: FormData) {
     const email = formData.get('email') as string
@@ -33,7 +44,7 @@ export async function signup(formData: FormData) {
         email,
         password,
         options: {
-            emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`
+            emailRedirectTo: `${await getBaseUrl()}/auth/callback`
         }
     })
 
@@ -60,7 +71,7 @@ export async function signInWithGoogle() {
     const { data } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-            redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+            redirectTo: `${await getBaseUrl()}/auth/callback`,
         },
     })
 
