@@ -390,7 +390,7 @@ export default function RSVPReader({
             </div>
 
             {/* Reader Zone */}
-            <div className="flex-1 flex flex-col justify-center items-center py-20">
+            <div className="flex-1 flex flex-col justify-center items-center py-12">
                 <div className="relative w-full max-w-2xl h-48 flex items-center justify-center rounded-2xl">
                     {/* Center Alignment Guides */}
                     <div className="absolute top-0 bottom-0 left-1/2 w-0.5 bg-red-500/20 -translate-x-1/2" />
@@ -400,6 +400,63 @@ export default function RSVPReader({
                     </div>
                 </div>
             </div>
+
+            {/* Rolling Context Lines */}
+            {(() => {
+                const WORDS_PER_LINE = 12;
+                const VISIBLE_LINES = 3;
+                const RENDER_BUFFER = 3;
+                const totalLines = Math.ceil(words.length / WORDS_PER_LINE);
+                const currentLineIdx = Math.floor(currentIndex / WORDS_PER_LINE);
+                const wordPosInLine = currentIndex % WORDS_PER_LINE;
+                const lineHeight = 32;
+                const offset = currentLineIdx * lineHeight;
+
+                // Only render lines near the current position
+                const startLine = Math.max(0, currentLineIdx - RENDER_BUFFER);
+                const endLine = Math.min(totalLines, currentLineIdx + RENDER_BUFFER + 1);
+
+                return (
+                    <div className="w-full max-w-5xl mx-auto mb-4 overflow-hidden relative" style={{ height: `${VISIBLE_LINES * lineHeight}px` }}>
+                        {/* Top & bottom fade masks */}
+                        <div className="absolute top-0 left-0 right-0 h-6 bg-gradient-to-b from-background to-transparent z-10 pointer-events-none" />
+                        <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none" />
+
+                        <div
+                            className="transition-transform duration-500 ease-out"
+                            style={{ transform: `translateY(${-offset + lineHeight * Math.floor(VISIBLE_LINES / 2)}px)` }}
+                        >
+                            {/* Spacer for lines above the render window */}
+                            <div style={{ height: `${startLine * lineHeight}px` }} />
+
+                            {Array.from({ length: endLine - startLine }, (_, i) => {
+                                const lineIdx = startLine + i;
+                                const lineStart = lineIdx * WORDS_PER_LINE;
+                                const line = words.slice(lineStart, lineStart + WORDS_PER_LINE);
+                                return (
+                                    <div
+                                        key={lineIdx}
+                                        className="flex gap-[0.5em] text-sm text-foreground/20 justify-center leading-none whitespace-nowrap"
+                                        style={{ height: `${lineHeight}px`, alignItems: 'center' }}
+                                    >
+                                        {line.map((word, wordIdx) => {
+                                            const isCurrentWord = lineIdx === currentLineIdx && wordIdx === wordPosInLine;
+                                            return (
+                                                <span
+                                                    key={wordIdx}
+                                                    className={`transition-colors duration-200 ${isCurrentWord ? 'text-orange-500/80 font-semibold' : ''}`}
+                                                >
+                                                    {word}
+                                                </span>
+                                            );
+                                        })}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Controls */}
             <div className="mt-auto flex flex-col gap-8 bg-background p-6 rounded-2xl border shadow-sm">
